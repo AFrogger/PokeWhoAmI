@@ -366,6 +366,13 @@ body {
   padding: 0;
 }
 
+.filter-section.collapsed .evolution-filter-buttons {
+  max-height: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
 .filter-buttons {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -585,6 +592,9 @@ body {
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
+  max-height: 1000px;
+  overflow: hidden;
+  transition: max-height 0.3s ease, margin 0.3s ease;
 }
 
 .evolution-btn {

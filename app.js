@@ -8,10 +8,12 @@ const state = {
   currentFilters: {
     generations: new Set(), // Set of selected generations (empty = all)
     notGenerations: new Set(), // Set of excluded generations (NOT state)
-    generationMode: 'single', // 'single' or 'multiple'
     types: new Set(),       // Set of selected types (empty = all types)
     notTypes: new Set(),    // Set of excluded types (NOT state)
-    typeMode: 'or',         // 'or' or 'and'
+    typeCount: new Set(),   // 'single' or 'dual' (empty = both)
+    notTypeCount: new Set(), // Excluded type counts (NOT state)
+    evolutionStages: new Set(), // Selected evolution stages (empty = all)
+    notEvolutionStages: new Set(), // Excluded evolution stages (NOT state)
     name: ''                // Name search string
   }
 };
@@ -20,6 +22,12 @@ const state = {
 const API_BASE = 'https://pokeapi.co/api/v2';
 const BATCH_SIZE = 30; // Fetch Pokemon in batches of 30
 const MAX_POKEMON_ID = 1025; // Stop at Pecharunt, exclude alternate forms
+
+// Roman numeral conversion
+const ROMAN_NUMERALS = {
+  1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V',
+  6: 'VI', 7: 'VII', 8: 'VIII', 9: 'IX'
+};
 
 // Pokemon type colors (official Pokemon type colors)
 const TYPE_COLORS = {
@@ -51,8 +59,6 @@ const progressFill = document.getElementById('progress-fill');
 const loadingText = document.getElementById('loading-text');
 const resetBtn = document.getElementById('reset-btn');
 const nameSearchInput = document.getElementById('name-search');
-const genModeToggle = document.getElementById('gen-mode-toggle');
-const typeModeToggle = document.getElementById('type-mode-toggle');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
 const infoBtn = document.getElementById('info-btn');
 const infoModal = document.getElementById('info-modal');
@@ -180,12 +186,37 @@ async function fetchPokemonDetails(pokemon) {
       || data.sprites.front_default
       || placeholderSprite;
 
+    // Fetch species data to get evolution stage
+    let evolutionStage = 1; // Default to Stage 1
+    try {
+      const speciesResponse = await fetch(data.species.url);
+      const speciesData = await speciesResponse.json();
+
+      if (speciesData.evolves_from_species) {
+        // This Pokemon evolves from another, so it's at least Stage 2
+        // Fetch the species it evolves from to determine if it's Stage 2 or 3
+        const prevSpeciesResponse = await fetch(speciesData.evolves_from_species.url);
+        const prevSpeciesData = await prevSpeciesResponse.json();
+
+        if (prevSpeciesData.evolves_from_species) {
+          // The previous Pokemon also evolved from something, so this is Stage 3
+          evolutionStage = 3;
+        } else {
+          // The previous Pokemon is base, so this is Stage 2
+          evolutionStage = 2;
+        }
+      }
+    } catch (error) {
+      console.warn(`Could not determine evolution stage for ${pokemon.name}:`, error);
+    }
+
     return {
       id: data.id,
       name: data.name,
       sprite: sprite,
       types: data.types.map(t => t.type.name),
-      generation: state.generationMap[data.species.name] || 1
+      generation: state.generationMap[data.species.name] || 1,
+      evolutionStage: evolutionStage
     };
   } catch (error) {
     console.error(`Error fetching ${pokemon.name}:`, error);
@@ -216,10 +247,11 @@ function createPokemonCard(pokemon) {
   const isChosen = state.chosenPokemonId === pokemon.id;
 
   card.innerHTML = `
-  <button class="star-btn ${isChosen ? 'active' : ''}" data-pokemon-id="${pokemon.id}" title="Choose this Pokemon">
-    &#9733;
-  </button>
+    <button class="star-btn ${isChosen ? 'active' : ''}" data-pokemon-id="${pokemon.id}" title="Choose this Pokemon">
+      &#9733;
+    </button>
     <div class="pokemon-number">#${String(pokemon.id).padStart(3, '0')}</div>
+    <div class="pokemon-generation">${ROMAN_NUMERALS[pokemon.generation] || 'I'}</div>
     <img src="${pokemon.sprite}" alt="${pokemon.name}" class="pokemon-sprite">
     <div class="pokemon-name">${pokemon.name}</div>
     <div class="pokemon-types">
@@ -261,19 +293,11 @@ function filterPokemon() {
     filtered = filtered.filter(p => !state.currentFilters.notGenerations.has(p.generation));
   }
 
-  // Filter by type
+  // Filter by type (AND mode: Pokemon must have ALL selected types)
   if (state.currentFilters.types.size > 0) {
-    if (state.currentFilters.typeMode === 'and') {
-      // AND mode: Pokemon must have ALL selected types
-      filtered = filtered.filter(p =>
-        [...state.currentFilters.types].every(type => p.types.includes(type))
-      );
-    } else {
-      // OR mode: Pokemon must have at least ONE selected type
-      filtered = filtered.filter(p =>
-        p.types.some(type => state.currentFilters.types.has(type))
-      );
-    }
+    filtered = filtered.filter(p =>
+      [...state.currentFilters.types].every(type => p.types.includes(type))
+    );
   }
 
   // Exclude NOT types
@@ -281,6 +305,34 @@ function filterPokemon() {
     filtered = filtered.filter(p =>
       !p.types.some(type => state.currentFilters.notTypes.has(type))
     );
+  }
+
+  // Filter by type count (single = 1 type, dual = 2 types)
+  if (state.currentFilters.typeCount.size > 0) {
+    filtered = filtered.filter(p => {
+      const typeCount = p.types.length;
+      return (state.currentFilters.typeCount.has('single') && typeCount === 1) ||
+             (state.currentFilters.typeCount.has('dual') && typeCount === 2);
+    });
+  }
+
+  // Exclude NOT type counts
+  if (state.currentFilters.notTypeCount.size > 0) {
+    filtered = filtered.filter(p => {
+      const typeCount = p.types.length;
+      return !(state.currentFilters.notTypeCount.has('single') && typeCount === 1) &&
+             !(state.currentFilters.notTypeCount.has('dual') && typeCount === 2);
+    });
+  }
+
+  // Filter by evolution stage
+  if (state.currentFilters.evolutionStages.size > 0) {
+    filtered = filtered.filter(p => state.currentFilters.evolutionStages.has(p.evolutionStage));
+  }
+
+  // Exclude NOT evolution stages
+  if (state.currentFilters.notEvolutionStages.size > 0) {
+    filtered = filtered.filter(p => !state.currentFilters.notEvolutionStages.has(p.evolutionStage));
   }
 
   state.displayedPokemon = filtered;
@@ -320,14 +372,21 @@ function updateChosenPokemonDisplay() {
     return;
   }
 
-const pokemon = state.allPokemon.find(p => p.id === state.chosenPokemonId);
-if (pokemon) {
-  chosenPokemonDisplay.innerHTML = `
-    <img src="${pokemon.sprite}" alt="${pokemon.name}" class="chosen-sprite">
-    <span class="chosen-name" style="text-transform: capitalize;">${pokemon.name}</span>
-  `;
-}
-
+  const pokemon = state.allPokemon.find(p => p.id === state.chosenPokemonId);
+  if (pokemon) {
+    chosenPokemonDisplay.innerHTML = `
+      <img src="${pokemon.sprite}" alt="${pokemon.name}" class="chosen-sprite">
+      <div class="chosen-info">
+        <span class="chosen-name">${pokemon.name}</span>
+        <div class="chosen-details">
+          <span class="chosen-generation">${ROMAN_NUMERALS[pokemon.generation] || 'I'}</span>
+          <div class="chosen-types">
+            ${pokemon.types.map(type => `<span class="chosen-type-badge" style="background-color: ${TYPE_COLORS[type] || '#667eea'}">${type}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
 }
 
 function resetAllPokemon() {
@@ -343,6 +402,10 @@ function resetAllPokemon() {
   state.currentFilters.notGenerations.clear();
   state.currentFilters.types.clear();
   state.currentFilters.notTypes.clear();
+  state.currentFilters.typeCount.clear();
+  state.currentFilters.notTypeCount.clear();
+  state.currentFilters.evolutionStages.clear();
+  state.currentFilters.notEvolutionStages.clear();
   state.currentFilters.name = '';
   nameSearchInput.value = '';
 
@@ -350,12 +413,23 @@ function resetAllPokemon() {
   document.querySelectorAll('[data-generation]').forEach(b => {
     b.classList.remove('active', 'not');
   });
-  document.querySelector('[data-generation="all"]').classList.add('active');
+  document.querySelector('[data-generation="all"]')?.classList.add('active');
 
   document.querySelectorAll('[data-type]').forEach(b => {
     b.classList.remove('active', 'not');
   });
-  document.querySelector('[data-type="all"]').classList.add('active');
+  document.querySelector('[data-type="all"]')?.classList.add('active');
+
+  // Reset type count toggle
+  const typeCountToggle = document.getElementById('type-count-toggle');
+  if (typeCountToggle) {
+    typeCountToggle.textContent = 'Single+Dual';
+  }
+
+  document.querySelectorAll('[data-evolution]').forEach(b => {
+    b.classList.remove('active', 'not');
+  });
+  document.querySelector('[data-evolution="all"]')?.classList.add('active');
 
   // Re-render
   filterPokemon();
@@ -413,56 +487,8 @@ function setupEventListeners() {
     });
   });
 
-  // Generation mode toggle
-  genModeToggle.addEventListener('click', () => {
-    if (state.currentFilters.generationMode === 'single') {
-      state.currentFilters.generationMode = 'multiple';
-      genModeToggle.querySelector('.mode-label').textContent = 'Multiple';
-    } else {
-      state.currentFilters.generationMode = 'single';
-      genModeToggle.querySelector('.mode-label').textContent = 'Single';
-      // When switching to single mode, keep only the first selected generation and clear NOT states
-      const totalSelections = state.currentFilters.generations.size + state.currentFilters.notGenerations.size;
-      if (totalSelections > 1) {
-        const firstGen = [...state.currentFilters.generations][0];
-        const firstNotGen = [...state.currentFilters.notGenerations][0];
 
-        state.currentFilters.generations.clear();
-        state.currentFilters.notGenerations.clear();
-
-        // Update UI
-        document.querySelectorAll('[data-generation]').forEach(b => {
-          if (b.dataset.generation !== 'all') {
-            b.classList.remove('active', 'not');
-          }
-        });
-
-        // Keep the first selection or NOT state
-        if (firstGen) {
-          state.currentFilters.generations.add(firstGen);
-          document.querySelector(`[data-generation="${firstGen}"]`)?.classList.add('active');
-        } else if (firstNotGen) {
-          state.currentFilters.notGenerations.add(firstNotGen);
-          document.querySelector(`[data-generation="${firstNotGen}"]`)?.classList.add('not');
-        }
-      }
-    }
-    filterPokemon();
-  });
-
-  // Type mode toggle
-  typeModeToggle.addEventListener('click', () => {
-    if (state.currentFilters.typeMode === 'or') {
-      state.currentFilters.typeMode = 'and';
-      typeModeToggle.querySelector('.mode-label').textContent = 'AND';
-    } else {
-      state.currentFilters.typeMode = 'or';
-      typeModeToggle.querySelector('.mode-label').textContent = 'OR';
-    }
-    filterPokemon();
-  });
-
-  // Generation filters
+  // Generation filters (multiple selection enabled)
   document.querySelectorAll('[data-generation]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const clickedGen = e.target.dataset.generation;
@@ -478,55 +504,28 @@ function setupEventListeners() {
         const isActive = state.currentFilters.generations.has(genNumber);
         const isNot = state.currentFilters.notGenerations.has(genNumber);
 
-        if (state.currentFilters.generationMode === 'single') {
-          // Single mode: clear all and set this one's state
-          state.currentFilters.generations.clear();
-          state.currentFilters.notGenerations.clear();
-          document.querySelectorAll('[data-generation]').forEach(b => b.classList.remove('active', 'not'));
-          document.querySelector('[data-generation="all"]').classList.remove('active');
+        // Remove "All" button active state
+        document.querySelector('[data-generation="all"]').classList.remove('active');
 
-          // Cycle through states: unselected → active → not → unselected
-          if (!isActive && !isNot) {
-            // Unselected → Active
-            state.currentFilters.generations.add(genNumber);
-            e.target.classList.add('active');
-          } else if (isActive) {
-            // Active → NOT
-            state.currentFilters.generations.delete(genNumber);
-            state.currentFilters.notGenerations.add(genNumber);
-            e.target.classList.remove('active');
-            e.target.classList.add('not');
-          } else if (isNot) {
-            // NOT → Unselected
-            state.currentFilters.notGenerations.delete(genNumber);
-            e.target.classList.remove('not');
-            // Activate "All" since nothing is selected
+        // Cycle through states: unselected → active → not → unselected
+        if (!isActive && !isNot) {
+          // Unselected → Active
+          state.currentFilters.generations.add(genNumber);
+          e.target.classList.add('active');
+        } else if (isActive) {
+          // Active → NOT
+          state.currentFilters.generations.delete(genNumber);
+          state.currentFilters.notGenerations.add(genNumber);
+          e.target.classList.remove('active');
+          e.target.classList.add('not');
+        } else if (isNot) {
+          // NOT → Unselected
+          state.currentFilters.notGenerations.delete(genNumber);
+          e.target.classList.remove('not');
+
+          // If no generations selected or excluded, activate "All"
+          if (state.currentFilters.generations.size === 0 && state.currentFilters.notGenerations.size === 0) {
             document.querySelector('[data-generation="all"]').classList.add('active');
-          }
-        } else {
-          // Multiple mode: cycle through states for this button
-          document.querySelector('[data-generation="all"]').classList.remove('active');
-
-          // Cycle through states: unselected → active → not → unselected
-          if (!isActive && !isNot) {
-            // Unselected → Active
-            state.currentFilters.generations.add(genNumber);
-            e.target.classList.add('active');
-          } else if (isActive) {
-            // Active → NOT
-            state.currentFilters.generations.delete(genNumber);
-            state.currentFilters.notGenerations.add(genNumber);
-            e.target.classList.remove('active');
-            e.target.classList.add('not');
-          } else if (isNot) {
-            // NOT → Unselected
-            state.currentFilters.notGenerations.delete(genNumber);
-            e.target.classList.remove('not');
-
-            // If no generations selected or excluded, activate "All"
-            if (state.currentFilters.generations.size === 0 && state.currentFilters.notGenerations.size === 0) {
-              document.querySelector('[data-generation="all"]').classList.add('active');
-            }
           }
         }
       }
@@ -580,6 +579,80 @@ function setupEventListeners() {
           // If no types selected or excluded, activate "All"
           if (state.currentFilters.types.size === 0 && state.currentFilters.notTypes.size === 0) {
             document.querySelector('[data-type="all"]').classList.add('active');
+          }
+        }
+      }
+
+      filterPokemon();
+    });
+  });
+
+  // Type Count filter (single 3-state toggle button)
+  const typeCountToggle = document.getElementById('type-count-toggle');
+  if (typeCountToggle) {
+    let typeCountState = 'both'; // 'both', 'single', 'dual'
+
+    typeCountToggle.addEventListener('click', () => {
+      // Clear previous state
+      state.currentFilters.typeCount.clear();
+
+      // Cycle through states
+      if (typeCountState === 'both') {
+        typeCountState = 'single';
+        typeCountToggle.textContent = 'Single';
+        state.currentFilters.typeCount.add('single');
+      } else if (typeCountState === 'single') {
+        typeCountState = 'dual';
+        typeCountToggle.textContent = 'Dual';
+        state.currentFilters.typeCount.add('dual');
+      } else {
+        typeCountState = 'both';
+        typeCountToggle.textContent = 'Single+Dual';
+        state.currentFilters.typeCount.clear();
+      }
+
+      filterPokemon();
+    });
+  }
+
+  // Evolution Stage filters (3-state toggle)
+  document.querySelectorAll('[data-evolution]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const clickedStage = e.target.dataset.evolution;
+
+      if (clickedStage === 'all') {
+        // Clear all evolution stage selections and NOT selections
+        state.currentFilters.evolutionStages.clear();
+        state.currentFilters.notEvolutionStages.clear();
+        document.querySelectorAll('[data-evolution]').forEach(b => b.classList.remove('active', 'not'));
+        e.target.classList.add('active');
+      } else {
+        const stageNumber = parseInt(clickedStage);
+        const isActive = state.currentFilters.evolutionStages.has(stageNumber);
+        const isNot = state.currentFilters.notEvolutionStages.has(stageNumber);
+
+        // Remove "All" button active state
+        document.querySelector('[data-evolution="all"]').classList.remove('active');
+
+        // Cycle through states: unselected → active → not → unselected
+        if (!isActive && !isNot) {
+          // Unselected → Active
+          state.currentFilters.evolutionStages.add(stageNumber);
+          e.target.classList.add('active');
+        } else if (isActive) {
+          // Active → NOT
+          state.currentFilters.evolutionStages.delete(stageNumber);
+          state.currentFilters.notEvolutionStages.add(stageNumber);
+          e.target.classList.remove('active');
+          e.target.classList.add('not');
+        } else if (isNot) {
+          // NOT → Unselected
+          state.currentFilters.notEvolutionStages.delete(stageNumber);
+          e.target.classList.remove('not');
+
+          // If no stages selected or excluded, activate "All"
+          if (state.currentFilters.evolutionStages.size === 0 && state.currentFilters.notEvolutionStages.size === 0) {
+            document.querySelector('[data-evolution="all"]').classList.add('active');
           }
         }
       }

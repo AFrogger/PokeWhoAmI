@@ -91,11 +91,6 @@
             <span>Generation</span>
             <span class="collapse-icon">▼</span>
           </h3>
-          <div class="filter-mode-toggle">
-            <button id="gen-mode-toggle" class="mode-toggle-btn">
-              Mode: <span class="mode-label">Single</span>
-            </button>
-          </div>
           <div class="filter-buttons">
             <button class="filter-btn active" data-generation="all">All</button>
             <button class="filter-btn" data-generation="1">Gen 1</button>
@@ -116,11 +111,6 @@
             <span>Type</span>
             <span class="collapse-icon">▼</span>
           </h3>
-          <div class="filter-mode-toggle">
-            <button id="type-mode-toggle" class="mode-toggle-btn">
-              Mode: <span class="mode-label">OR</span>
-            </button>
-          </div>
           <div class="filter-buttons">
             <button class="filter-btn active" data-type="all">All</button>
             <button class="filter-btn" data-type="normal">Normal</button>
@@ -141,6 +131,21 @@
             <button class="filter-btn" data-type="dark">Dark</button>
             <button class="filter-btn" data-type="steel">Steel</button>
             <button class="filter-btn" data-type="fairy">Fairy</button>
+            <button class="filter-btn type-count-toggle" id="type-count-toggle">Single+Dual</button>
+          </div>
+        </div>
+
+        <!-- Evolution Stage Filter -->
+        <div class="filter-section">
+          <h3 class="filter-section-header">
+            <span>Evolution Stage</span>
+            <span class="collapse-icon">▼</span>
+          </h3>
+          <div class="evolution-filter-buttons">
+            <button class="evolution-btn active" data-evolution="all">ALL</button>
+            <button class="evolution-btn" data-evolution="1">Stage 1</button>
+            <button class="evolution-btn" data-evolution="2">Stage 2</button>
+            <button class="evolution-btn" data-evolution="3">Stage 3</button>
           </div>
         </div>
       </aside>

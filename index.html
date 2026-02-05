@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokemon - Who Am I?</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen">
+    <h2>Loading Pokemon...</h2>
+    <div class="progress-bar">
+      <div id="progress-fill" class="progress-fill"></div>
+    </div>
+    <p id="loading-text">0%</p>
+  </div>
+
+  <!-- Main App Container -->
+  <div id="app-container" class="app-container hidden">
+    <!-- Header -->
+    <header class="header">
+      <h1>Pokemon - Who Am I?</h1>
+      <div id="chosen-pokemon-display" class="chosen-pokemon-display">
+        <span class="no-choice">Choose your Pokemon</span>
+      </div>
+      <div class="header-controls">
+        <button id="info-btn" class="icon-btn" title="Info">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </button>
+        <button id="dark-mode-toggle" class="icon-btn" title="Toggle Dark Mode">
+          <svg id="sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg id="moon-icon" class="hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+        <button id="reset-btn" class="reset-btn">Reset All</button>
+      </div>
+    </header>
+
+    <!-- Info Modal -->
+    <div id="info-modal" class="modal hidden">
+      <div class="modal-content">
+        <span class="modal-close">&times;</span>
+        <h2>Legal Disclaimer</h2>
+        <p>This is a fan-made application for educational and entertainment purposes only.</p>
+        <p><strong>Not affiliated with:</strong></p>
+        <ul>
+          <li>Nintendo Co., Ltd.</li>
+          <li>The Pokémon Company</li>
+          <li>Game Freak Inc.</li>
+          <li>Creatures Inc.</li>
+        </ul>
+        <p>Pokémon and Pokémon character names are trademarks of Nintendo. All game data and sprites are retrieved from the <a href="https://pokeapi.co/" target="_blank" rel="noopener">PokéAPI</a>.</p>
+        <p>This project is not authorized, sponsored, or approved by any of the companies mentioned above.</p>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <!-- Sidebar with Filters -->
+      <aside class="sidebar">
+        <!-- Name Search -->
+        <div class="search-section">
+          <input
+            type="text"
+            id="name-search"
+            class="name-search-input"
+            placeholder="Search by name..."
+            autocomplete="off"
+          />
+        </div>
+
+        <!-- Generation Filters -->
+        <div class="filter-section">
+          <h3 class="filter-section-header">
+            <span>Generation</span>
+            <span class="collapse-icon">▼</span>
+          </h3>
+          <div class="filter-mode-toggle">
+            <button id="gen-mode-toggle" class="mode-toggle-btn">
+              Mode: <span class="mode-label">Single</span>
+            </button>
+          </div>
+          <div class="filter-buttons">
+            <button class="filter-btn active" data-generation="all">All</button>
+            <button class="filter-btn" data-generation="1">Gen 1</button>
+            <button class="filter-btn" data-generation="2">Gen 2</button>
+            <button class="filter-btn" data-generation="3">Gen 3</button>
+            <button class="filter-btn" data-generation="4">Gen 4</button>
+            <button class="filter-btn" data-generation="5">Gen 5</button>
+            <button class="filter-btn" data-generation="6">Gen 6</button>
+            <button class="filter-btn" data-generation="7">Gen 7</button>
+            <button class="filter-btn" data-generation="8">Gen 8</button>
+            <button class="filter-btn" data-generation="9">Gen 9</button>
+          </div>
+        </div>
+
+        <!-- Type Filters -->
+        <div class="filter-section">
+          <h3 class="filter-section-header">
+            <span>Type</span>
+            <span class="collapse-icon">▼</span>
+          </h3>
+          <div class="filter-mode-toggle">
+            <button id="type-mode-toggle" class="mode-toggle-btn">
+              Mode: <span class="mode-label">OR</span>
+            </button>
+          </div>
+          <div class="filter-buttons">
+            <button class="filter-btn active" data-type="all">All</button>
+            <button class="filter-btn" data-type="normal">Normal</button>
+            <button class="filter-btn" data-type="fire">Fire</button>
+            <button class="filter-btn" data-type="water">Water</button>
+            <button class="filter-btn" data-type="electric">Electric</button>
+            <button class="filter-btn" data-type="grass">Grass</button>
+            <button class="filter-btn" data-type="ice">Ice</button>
+            <button class="filter-btn" data-type="fighting">Fighting</button>
+            <button class="filter-btn" data-type="poison">Poison</button>
+            <button class="filter-btn" data-type="ground">Ground</button>
+            <button class="filter-btn" data-type="flying">Flying</button>
+            <button class="filter-btn" data-type="psychic">Psychic</button>
+            <button class="filter-btn" data-type="bug">Bug</button>
+            <button class="filter-btn" data-type="rock">Rock</button>
+            <button class="filter-btn" data-type="ghost">Ghost</button>
+            <button class="filter-btn" data-type="dragon">Dragon</button>
+            <button class="filter-btn" data-type="dark">Dark</button>
+            <button class="filter-btn" data-type="steel">Steel</button>
+            <button class="filter-btn" data-type="fairy">Fairy</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Pokemon Grid -->
+      <main class="pokemon-container">
+        <div id="pokemon-grid" class="pokemon-grid">
+          <!-- Pokemon cards will be dynamically inserted here -->
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

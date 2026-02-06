@@ -4,6 +4,7 @@ const state = {
   displayedPokemon: [],     // Filtered Pokemon
   disabledPokemon: new Set(), // Set of disabled Pokemon IDs
   chosenPokemonId: null,    // The user's chosen Pokemon (their identity)
+  currentLanguage: 'en',    // Current selected language (en, de, es, ja)
   generationMap: {},        // Map: pokemon-species-name -> generation-number
   currentFilters: {
     generations: new Set(), // Set of selected generations (empty = all)
@@ -49,6 +50,21 @@ const TYPE_COLORS = {
   dark: '#705848',
   steel: '#B8B8D0',
   fairy: '#EE99AC'
+};
+
+// Language support
+const LANGUAGE_FLAGS = {
+  en: '🇬🇧',
+  de: '🇩🇪',
+  es: '🇪🇸',
+  ja: '🇯🇵'
+};
+
+const LANGUAGE_NAMES = {
+  en: 'English',
+  de: 'Deutsch',
+  es: 'Español',
+  ja: '日本語'
 };
 
 // ===== DOM ELEMENTS =====
@@ -188,11 +204,23 @@ async function fetchPokemonDetails(pokemon) {
       || data.sprites.front_default
       || placeholderSprite;
 
-    // Fetch species data to get evolution stage
+    // Fetch species data to get evolution stage and language names
     let evolutionStage = 1; // Default to Stage 1
+    const names = {}; // Store names in different languages
     try {
       const speciesResponse = await fetch(data.species.url);
       const speciesData = await speciesResponse.json();
+
+      // Extract names in different languages
+      if (speciesData.names && Array.isArray(speciesData.names)) {
+        speciesData.names.forEach(nameEntry => {
+          const langCode = nameEntry.language.name;
+          // Only store target languages
+          if (['en', 'de', 'es', 'ja'].includes(langCode)) {
+            names[langCode] = nameEntry.name;
+          }
+        });
+      }
 
       if (speciesData.evolves_from_species) {
         // This Pokemon evolves from another, so it's at least Stage 2
@@ -215,6 +243,7 @@ async function fetchPokemonDetails(pokemon) {
     return {
       id: data.id,
       name: data.name,
+      names: names,  // Language-specific names
       sprite: sprite,
       types: data.types.map(t => t.type.name),
       generation: state.generationMap[data.species.name] || 1,
@@ -224,6 +253,14 @@ async function fetchPokemonDetails(pokemon) {
     console.error(`Error fetching ${pokemon.name}:`, error);
     return null;
   }
+}
+
+// Get Pokemon name in current language
+function getDisplayName(pokemon) {
+  if (!pokemon.names || !pokemon.names[state.currentLanguage]) {
+    return pokemon.name; // Fallback to default name
+  }
+  return pokemon.names[state.currentLanguage];
 }
 
 // ===== RENDERING FUNCTIONS =====
@@ -256,8 +293,8 @@ function createPokemonCard(pokemon) {
     </button>
     <div class="pokemon-number">#${String(pokemon.id).padStart(3, '0')}</div>
     <div class="pokemon-generation">${ROMAN_NUMERALS[pokemon.generation] || 'I'}</div>
-    <img src="${pokemon.sprite}" alt="${pokemon.name}" class="pokemon-sprite">
-    <div class="pokemon-name">${pokemon.name}</div>
+    <img src="${pokemon.sprite}" alt="${getDisplayName(pokemon)}" class="pokemon-sprite">
+    <div class="pokemon-name">${getDisplayName(pokemon)}</div>
     <div class="pokemon-types">
       ${pokemon.types.map(type => `<span class="type-badge" style="background-color: ${TYPE_COLORS[type] || '#667eea'}">${type}</span>`).join('')}
     </div>
@@ -284,7 +321,16 @@ function filterPokemon() {
   // Filter by name
   if (state.currentFilters.name) {
     const searchTerm = state.currentFilters.name.toLowerCase();
-    filtered = filtered.filter(p => p.name.toLowerCase().includes(searchTerm));
+    filtered = filtered.filter(p => {
+      // Search in current language
+      const currentLangName = getDisplayName(p).toLowerCase();
+      if (currentLangName.includes(searchTerm)) return true;
+
+      // Also search in English for consistency
+      if (p.name.toLowerCase().includes(searchTerm)) return true;
+
+      return false;
+    });
   }
 
   // Filter by generation
@@ -379,9 +425,9 @@ function updateChosenPokemonDisplay() {
   const pokemon = state.allPokemon.find(p => p.id === state.chosenPokemonId);
   if (pokemon) {
     chosenPokemonDisplay.innerHTML = `
-      <img src="${pokemon.sprite}" alt="${pokemon.name}" class="chosen-sprite">
+      <img src="${pokemon.sprite}" alt="${getDisplayName(pokemon)}" class="chosen-sprite">
       <div class="chosen-info">
-        <span class="chosen-name">${pokemon.name}</span>
+        <span class="chosen-name">${getDisplayName(pokemon)}</span>
         <div class="chosen-details">
           <span class="chosen-generation">${ROMAN_NUMERALS[pokemon.generation] || 'I'}</span>
           <div class="chosen-types">
@@ -486,6 +532,37 @@ function setupEventListeners() {
       infoModal.classList.add('hidden');
     }
   });
+
+  // Language selector
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const selectedLang = e.target.dataset.lang;
+
+      // Update state
+      state.currentLanguage = selectedLang;
+
+      // Update UI - remove active from all, add to clicked
+      document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+
+      // Save preference to localStorage
+      localStorage.setItem('selectedLanguage', selectedLang);
+
+      // Re-render to show new language
+      renderPokemonGrid();
+      updateChosenPokemonDisplay();
+    });
+  });
+
+  // Load saved language preference on init
+  const savedLanguage = localStorage.getItem('selectedLanguage') || 'en';
+  state.currentLanguage = savedLanguage;
+  // Update UI to show saved language
+  const langBtn = document.querySelector(`[data-lang="${savedLanguage}"]`);
+  if (langBtn) {
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    langBtn.classList.add('active');
+  }
 
   // Name search input
   nameSearchInput.addEventListener('input', (e) => {

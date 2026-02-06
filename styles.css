@@ -726,6 +726,42 @@ body {
   text-align: center;
 }
 
+/* Language Selector */
+.language-selector {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.lang-btn {
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--header-text);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.lang-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+.lang-btn.active {
+  background: rgba(52, 152, 219, 0.8);
+  border-color: #3498DB;
+  box-shadow: 0 0 8px rgba(52, 152, 219, 0.4);
+}
+
 /* ===== RESPONSIVE DESIGN ===== */
 
 /* Tablets */
@@ -817,6 +853,16 @@ body {
   .counter-value {
     font-size: 1rem;
     min-width: 25px;
+  }
+
+  .language-selector {
+    padding: 3px 6px;
+    gap: 3px;
+  }
+
+  .lang-btn {
+    padding: 5px 8px;
+    font-size: 0.75rem;
   }
 
   .main-content {

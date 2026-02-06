@@ -533,20 +533,33 @@ function setupEventListeners() {
     }
   });
 
-  // Language selector
-  document.querySelectorAll('.lang-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const selectedLang = e.target.dataset.lang;
+  // Language selector dropdown
+  const langToggleBtn = document.getElementById('lang-toggle-btn');
+  const langDropdown = document.getElementById('lang-dropdown');
+  const currentLangFlag = document.getElementById('current-lang-flag');
+
+  // Toggle dropdown
+  langToggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    langDropdown.classList.toggle('hidden');
+  });
+
+  // Language selection
+  document.querySelectorAll('.lang-option').forEach(option => {
+    option.addEventListener('click', (e) => {
+      const selectedLang = e.currentTarget.dataset.lang;
 
       // Update state
       state.currentLanguage = selectedLang;
 
-      // Update UI - remove active from all, add to clicked
-      document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
+      // Update flag display
+      currentLangFlag.textContent = LANGUAGE_FLAGS[selectedLang];
 
       // Save preference to localStorage
       localStorage.setItem('selectedLanguage', selectedLang);
+
+      // Close dropdown
+      langDropdown.classList.add('hidden');
 
       // Re-render to show new language
       renderPokemonGrid();
@@ -554,15 +567,17 @@ function setupEventListeners() {
     });
   });
 
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!langToggleBtn.contains(e.target) && !langDropdown.contains(e.target)) {
+      langDropdown.classList.add('hidden');
+    }
+  });
+
   // Load saved language preference on init
   const savedLanguage = localStorage.getItem('selectedLanguage') || 'en';
   state.currentLanguage = savedLanguage;
-  // Update UI to show saved language
-  const langBtn = document.querySelector(`[data-lang="${savedLanguage}"]`);
-  if (langBtn) {
-    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-    langBtn.classList.add('active');
-  }
+  currentLangFlag.textContent = LANGUAGE_FLAGS[savedLanguage];
 
   // Name search input
   nameSearchInput.addEventListener('input', (e) => {

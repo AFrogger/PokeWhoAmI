@@ -29,10 +29,23 @@
         <span class="counter-value">0</span>
       </div>
       <div class="language-selector">
-        <button class="lang-btn active" data-lang="en" title="English">🇬🇧 EN</button>
-        <button class="lang-btn" data-lang="de" title="Deutsch">🇩🇪 DE</button>
-        <button class="lang-btn" data-lang="es" title="Español">🇪🇸 ES</button>
-        <button class="lang-btn" data-lang="ja" title="日本語">🇯🇵 JA</button>
+        <button id="lang-toggle-btn" class="icon-btn" title="Change Language">
+          <span id="current-lang-flag">🇬🇧</span>
+        </button>
+        <div id="lang-dropdown" class="lang-dropdown hidden">
+          <button class="lang-option" data-lang="en" title="English">
+            🇬🇧 <span>English</span>
+          </button>
+          <button class="lang-option" data-lang="de" title="Deutsch">
+            🇩🇪 <span>Deutsch</span>
+          </button>
+          <button class="lang-option" data-lang="es" title="Español">
+            🇪🇸 <span>Español</span>
+          </button>
+          <button class="lang-option" data-lang="ja" title="日本語">
+            🇯🇵 <span>日本語</span>
+          </button>
+        </div>
       </div>
       <div class="header-controls">
         <button id="info-btn" class="icon-btn" title="Info">

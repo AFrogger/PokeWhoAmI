@@ -418,31 +418,42 @@ body {
 }
 
 /* Type colored filter buttons */
-.filter-btn.type-colored {
+.filter-btn.type-colored,
+.filter-btn.color-colored {
   background: var(--type-color);
   color: white;
   font-weight: 600;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-.filter-btn.type-colored:hover {
+.filter-btn.type-colored:hover,
+.filter-btn.color-colored:hover {
   filter: brightness(1.1);
   background: var(--type-color);
 }
 
-.filter-btn.type-colored.active {
+.filter-btn.type-colored.active,
+.filter-btn.color-colored.active {
   background: var(--type-color);
   border: 4px solid #FFD700;
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
-.filter-btn.type-colored.not {
+.filter-btn.type-colored.not,
+.filter-btn.color-colored.not {
   background: var(--bg-secondary);
   color: var(--text-secondary);
   border: 2px solid var(--border-color);
   box-shadow: none;
   opacity: 0.6;
   filter: none;
+  text-shadow: none;
+}
+
+/* Special handling for light-colored buttons (white, yellow, pink) */
+.filter-btn.color-colored.light-text {
+  color: #333;
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
 }
 
 /* ===== POKEMON GRID ===== */
@@ -587,6 +598,18 @@ body {
   filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.8));
 }
 
+.star-btn:disabled {
+  opacity: 0.15;
+  cursor: not-allowed;
+  filter: grayscale(80%);
+  pointer-events: none;
+}
+
+.star-btn:disabled:hover {
+  opacity: 0.15;
+  transform: none;
+}
+
 /* Evolution Stage Filter Buttons */
 .evolution-filter-buttons {
   display: flex;
@@ -648,6 +671,58 @@ body {
   color: var(--header-text);
   opacity: 0.6;
   font-style: italic;
+}
+
+.random-btn {
+  background: none;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: var(--header-text);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.3s;
+  line-height: 1;
+  opacity: 0.8;
+  margin-left: 8px;
+}
+
+.random-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.1);
+}
+
+.random-btn:active {
+  transform: scale(0.95);
+}
+
+.clear-chosen-btn {
+  background: none;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: var(--header-text);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0px 6px;
+  border-radius: 6px;
+  transition: all 0.3s;
+  line-height: 1;
+  opacity: 0.7;
+  margin-left: auto;
+  font-weight: bold;
+}
+
+.clear-chosen-btn:hover {
+  opacity: 1;
+  background: rgba(231, 76, 60, 0.2);
+  border-color: #E74C3C;
+  color: #E74C3C;
+  transform: scale(1.1);
+}
+
+.clear-chosen-btn:active {
+  transform: scale(0.95);
 }
 
 .chosen-sprite {
@@ -821,10 +896,36 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
   }
 
-  .filter-btn {
-    padding: 10px 8px;
-    min-height: 44px;
-  }
+.filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* align items to the left */
+  padding: 10px 8px;
+  min-height: 44px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  position: relative;
+  color: var(--text-primary);
+}
+
+.filter-btn .icon {
+  width: 24px;   /* fixed width for alignment */
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0; /* prevent icon from shrinking */
+  margin-right: 8px; /* space between icon and text */
+}
+
+.filter-btn .text {
+  flex: 1;
+  text-align: center;
+  margin-right: 24px; /* balance the icon width for true centering */
+}
 
   .evolution-btn {
     padding: 10px 6px;

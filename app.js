@@ -15,8 +15,12 @@ const state = {
     notTypeCount: new Set(), // Excluded type counts (NOT state)
     evolutionStages: new Set(), // Selected evolution stages (empty = all)
     notEvolutionStages: new Set(), // Excluded evolution stages (NOT state)
+    specialCategories: new Set(),      // 'baby', 'legendary', 'mythical'
+    notSpecialCategories: new Set(),   // Excluded special categories
+    colors: new Set(),           // Selected colors (OR logic)
+    notColors: new Set(),        // Excluded colors (NOT state)
     name: ''                // Name search string
-  }
+  },
 };
 
 // ===== CONSTANTS =====
@@ -52,19 +56,40 @@ const TYPE_COLORS = {
   fairy: '#EE99AC'
 };
 
+// Pokemon color values (for color filter buttons)
+const COLOR_COLORS = {
+  black: '#2C2C2C',
+  blue: '#3498DB',
+  brown: '#8B4513',
+  gray: '#7F8C8D',
+  green: '#27AE60',
+  pink: '#FF69B4',
+  purple: '#9B59B6',
+  red: '#E74C3C',
+  white: '#ECF0F1',
+  yellow: '#F1C40F'
+};
+
+// Colors that need dark text for readability
+const LIGHT_COLORS = ['white', 'yellow', 'pink'];
+
 // Language support
 const LANGUAGE_FLAGS = {
   en: 'https://flagcdn.com/w40/gb.png',
   de: 'https://flagcdn.com/w40/de.png',
   es: 'https://flagcdn.com/w40/es.png',
-  ja: 'https://flagcdn.com/w40/jp.png'
+  fr: 'https://flagcdn.com/w40/fr.png',
+  ja: 'https://flagcdn.com/w40/jp.png',
+  ko: 'https://flagcdn.com/w40/kr.png'
 };
 
 const LANGUAGE_NAMES = {
   en: 'English',
   de: 'Deutsch',
   es: 'Español',
-  ja: '日本語'
+  fr: 'Français',
+  ja: '日本語',
+  ko: '한국어'
 };
 
 // ===== DOM ELEMENTS =====
@@ -207,6 +232,10 @@ async function fetchPokemonDetails(pokemon) {
     // Fetch species data to get evolution stage and language names
     let evolutionStage = 1; // Default to Stage 1
     const names = {}; // Store names in different languages
+    let isBaby = false;
+    let isLegendary = false;
+    let isMythical = false;
+    let color = null;
     try {
       const speciesResponse = await fetch(data.species.url);
       const speciesData = await speciesResponse.json();
@@ -216,10 +245,20 @@ async function fetchPokemonDetails(pokemon) {
         speciesData.names.forEach(nameEntry => {
           const langCode = nameEntry.language.name;
           // Only store target languages
-          if (['en', 'de', 'es', 'ja'].includes(langCode)) {
+          if (['en', 'de', 'es', 'fr', 'ja', 'ko'].includes(langCode)) {
             names[langCode] = nameEntry.name;
           }
         });
+      }
+
+      // Extract special category flags
+      isBaby = speciesData.is_baby || false;
+      isLegendary = speciesData.is_legendary || false;
+      isMythical = speciesData.is_mythical || false;
+
+      // Extract color
+      if (speciesData.color && speciesData.color.name) {
+        color = speciesData.color.name;
       }
 
       if (speciesData.evolves_from_species) {
@@ -247,7 +286,11 @@ async function fetchPokemonDetails(pokemon) {
       sprite: sprite,
       types: data.types.map(t => t.type.name),
       generation: state.generationMap[data.species.name] || 1,
-      evolutionStage: evolutionStage
+      evolutionStage: evolutionStage,
+      isBaby: isBaby,              // Baby Pokemon flag
+      isLegendary: isLegendary,    // Legendary Pokemon flag
+      isMythical: isMythical,      // Mythical Pokemon flag
+      color: color                 // Pokemon color
     };
   } catch (error) {
     console.error(`Error fetching ${pokemon.name}:`, error);
@@ -286,9 +329,10 @@ function createPokemonCard(pokemon) {
   }
 
   const isChosen = state.chosenPokemonId === pokemon.id;
+  const shouldDisableStarBtn = state.chosenPokemonId !== null && !isChosen;
 
   card.innerHTML = `
-    <button class="star-btn ${isChosen ? 'active' : ''}" data-pokemon-id="${pokemon.id}" title="Choose this Pokemon">
+    <button class="star-btn ${isChosen ? 'active' : ''}" data-pokemon-id="${pokemon.id}" title="Choose this Pokemon" ${shouldDisableStarBtn ? 'disabled' : ''}>
       &#9733;
     </button>
     <div class="pokemon-number">#${String(pokemon.id).padStart(3, '0')}</div>
@@ -385,6 +429,42 @@ function filterPokemon() {
     filtered = filtered.filter(p => !state.currentFilters.notEvolutionStages.has(p.evolutionStage));
   }
 
+  // Filter by special categories (baby, legendary, mythical) - OR logic
+  if (state.currentFilters.specialCategories.size > 0) {
+    filtered = filtered.filter(p => {
+      // Pokemon must match AT LEAST ONE selected category
+      if (state.currentFilters.specialCategories.has('baby') && p.isBaby) return true;
+      if (state.currentFilters.specialCategories.has('legendary') && p.isLegendary) return true;
+      if (state.currentFilters.specialCategories.has('mythical') && p.isMythical) return true;
+      return false;
+    });
+  }
+
+  // Exclude NOT special categories
+  if (state.currentFilters.notSpecialCategories.size > 0) {
+    filtered = filtered.filter(p => {
+      // Exclude Pokemon matching ANY excluded category
+      if (state.currentFilters.notSpecialCategories.has('baby') && p.isBaby) return false;
+      if (state.currentFilters.notSpecialCategories.has('legendary') && p.isLegendary) return false;
+      if (state.currentFilters.notSpecialCategories.has('mythical') && p.isMythical) return false;
+      return true;
+    });
+  }
+
+  // Filter by color (OR logic: match AT LEAST ONE selected color)
+  if (state.currentFilters.colors.size > 0) {
+    filtered = filtered.filter(p =>
+      p.color && state.currentFilters.colors.has(p.color)
+    );
+  }
+
+  // Exclude NOT colors
+  if (state.currentFilters.notColors.size > 0) {
+    filtered = filtered.filter(p =>
+      !p.color || !state.currentFilters.notColors.has(p.color)
+    );
+  }
+
   state.displayedPokemon = filtered;
   renderPokemonGrid();
 }
@@ -418,7 +498,16 @@ function chooseIdentity(pokemonId) {
 
 function updateChosenPokemonDisplay() {
   if (!state.chosenPokemonId) {
-    chosenPokemonDisplay.innerHTML = '<span class="no-choice">Choose your Pokemon</span>';
+    chosenPokemonDisplay.innerHTML = `
+      <span class="no-choice">Choose your Pokemon</span>
+      <button id="random-pokemon-btn" class="random-btn" title="Choose Random Pokemon">🎲</button>
+    `;
+
+    // Re-attach event listener after innerHTML change
+    const randomBtn = document.getElementById('random-pokemon-btn');
+    if (randomBtn) {
+      randomBtn.addEventListener('click', chooseRandomPokemon);
+    }
     return;
   }
 
@@ -435,8 +524,38 @@ function updateChosenPokemonDisplay() {
           </div>
         </div>
       </div>
+      <button id="clear-chosen-btn" class="clear-chosen-btn" title="Clear Selection">&times;</button>
     `;
+
+    // Re-attach event listener for clear button
+    const clearBtn = document.getElementById('clear-chosen-btn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        state.chosenPokemonId = null;
+        updateChosenPokemonDisplay();
+        renderPokemonGrid();
+      });
+    }
   }
+}
+
+function chooseRandomPokemon() {
+  // Filter out disabled Pokemon from displayed list
+  const availablePokemon = state.displayedPokemon.filter(pokemon =>
+    !state.disabledPokemon.has(pokemon.id)
+  );
+
+  // If no Pokemon available, do nothing
+  if (availablePokemon.length === 0) {
+    return;
+  }
+
+  // Select random Pokemon from available list
+  const randomIndex = Math.floor(Math.random() * availablePokemon.length);
+  const randomPokemon = availablePokemon[randomIndex];
+
+  // Use existing chooseIdentity function
+  chooseIdentity(randomPokemon.id);
 }
 
 function updateRemainingCounter() {
@@ -466,6 +585,10 @@ function resetAllPokemon() {
   state.currentFilters.notTypeCount.clear();
   state.currentFilters.evolutionStages.clear();
   state.currentFilters.notEvolutionStages.clear();
+  state.currentFilters.specialCategories.clear();
+  state.currentFilters.notSpecialCategories.clear();
+  state.currentFilters.colors.clear();
+  state.currentFilters.notColors.clear();
   state.currentFilters.name = '';
   nameSearchInput.value = '';
 
@@ -490,6 +613,14 @@ function resetAllPokemon() {
     b.classList.remove('active', 'not');
   });
   document.querySelector('[data-evolution="all"]')?.classList.add('active');
+
+  document.querySelectorAll('[data-special]').forEach(b => {
+    b.classList.remove('active', 'not');
+  });
+
+  document.querySelectorAll('[data-color]').forEach(b => {
+    b.classList.remove('active', 'not');
+  });
 
   // Re-render
   filterPokemon();
@@ -599,7 +730,7 @@ function setupEventListeners() {
   // Generation filters (multiple selection enabled)
   document.querySelectorAll('[data-generation]').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const clickedGen = e.target.dataset.generation;
+      const clickedGen = e.currentTarget.dataset.generation;
 
       if (clickedGen === 'all') {
         // Clear all generation selections and NOT selections
@@ -619,17 +750,17 @@ function setupEventListeners() {
         if (!isActive && !isNot) {
           // Unselected → Active
           state.currentFilters.generations.add(genNumber);
-          e.target.classList.add('active');
+          e.currentTarget.classList.add('active');
         } else if (isActive) {
           // Active → NOT
           state.currentFilters.generations.delete(genNumber);
           state.currentFilters.notGenerations.add(genNumber);
-          e.target.classList.remove('active');
-          e.target.classList.add('not');
+          e.currentTarget.classList.remove('active');
+          e.currentTarget.classList.add('not');
         } else if (isNot) {
           // NOT → Unselected
           state.currentFilters.notGenerations.delete(genNumber);
-          e.target.classList.remove('not');
+          e.currentTarget.classList.remove('not');
 
           // If no generations selected or excluded, activate "All"
           if (state.currentFilters.generations.size === 0 && state.currentFilters.notGenerations.size === 0) {
@@ -653,7 +784,7 @@ function setupEventListeners() {
     }
 
     btn.addEventListener('click', (e) => {
-      const clickedType = e.target.dataset.type;
+      const clickedType = e.currentTarget.dataset.type;
 
       if (clickedType === 'all') {
         // Clear all type selections and NOT selections
@@ -672,17 +803,17 @@ function setupEventListeners() {
         if (!isActive && !isNot) {
           // Unselected → Active
           state.currentFilters.types.add(clickedType);
-          e.target.classList.add('active');
+          e.currentTarget.classList.add('active');
         } else if (isActive) {
           // Active → NOT
           state.currentFilters.types.delete(clickedType);
           state.currentFilters.notTypes.add(clickedType);
-          e.target.classList.remove('active');
-          e.target.classList.add('not');
+          e.currentTarget.classList.remove('active');
+          e.currentTarget.classList.add('not');
         } else if (isNot) {
           // NOT → Unselected
           state.currentFilters.notTypes.delete(clickedType);
-          e.target.classList.remove('not');
+          e.currentTarget.classList.remove('not');
 
           // If no types selected or excluded, activate "All"
           if (state.currentFilters.types.size === 0 && state.currentFilters.notTypes.size === 0) {
@@ -726,7 +857,7 @@ function setupEventListeners() {
   // Evolution Stage filters (3-state toggle)
   document.querySelectorAll('[data-evolution]').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const clickedStage = e.target.dataset.evolution;
+      const clickedStage = e.currentTarget.dataset.evolution;
 
       if (clickedStage === 'all') {
         // Clear all evolution stage selections and NOT selections
@@ -746,23 +877,89 @@ function setupEventListeners() {
         if (!isActive && !isNot) {
           // Unselected → Active
           state.currentFilters.evolutionStages.add(stageNumber);
-          e.target.classList.add('active');
+          e.currentTarget.classList.add('active');
         } else if (isActive) {
           // Active → NOT
           state.currentFilters.evolutionStages.delete(stageNumber);
           state.currentFilters.notEvolutionStages.add(stageNumber);
-          e.target.classList.remove('active');
-          e.target.classList.add('not');
+          e.currentTarget.classList.remove('active');
+          e.currentTarget.classList.add('not');
         } else if (isNot) {
           // NOT → Unselected
           state.currentFilters.notEvolutionStages.delete(stageNumber);
-          e.target.classList.remove('not');
+          e.currentTarget.classList.remove('not');
 
           // If no stages selected or excluded, activate "All"
           if (state.currentFilters.evolutionStages.size === 0 && state.currentFilters.notEvolutionStages.size === 0) {
             document.querySelector('[data-evolution="all"]').classList.add('active');
           }
         }
+      }
+
+      filterPokemon();
+    });
+  });
+
+  // Special Categories filters (3-state toggle)
+  document.querySelectorAll('[data-special]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const clickedCategory = e.currentTarget.dataset.special;
+      const isActive = state.currentFilters.specialCategories.has(clickedCategory);
+      const isNot = state.currentFilters.notSpecialCategories.has(clickedCategory);
+
+      // Cycle: unselected → active → not → unselected
+      if (!isActive && !isNot) {
+        // Unselected → Active
+        state.currentFilters.specialCategories.add(clickedCategory);
+        e.currentTarget.classList.add('active');
+      } else if (isActive) {
+        // Active → NOT
+        state.currentFilters.specialCategories.delete(clickedCategory);
+        state.currentFilters.notSpecialCategories.add(clickedCategory);
+        e.currentTarget.classList.remove('active');
+        e.currentTarget.classList.add('not');
+      } else if (isNot) {
+        // NOT → Unselected
+        state.currentFilters.notSpecialCategories.delete(clickedCategory);
+        e.currentTarget.classList.remove('not');
+      }
+
+      filterPokemon();
+    });
+  });
+
+  // Color filters (3-state toggle with OR logic)
+  document.querySelectorAll('[data-color]').forEach(btn => {
+    const color = btn.dataset.color;
+
+    // Apply color to filter buttons
+    if (COLOR_COLORS[color]) {
+      btn.style.setProperty('--type-color', COLOR_COLORS[color]);
+      btn.classList.add('color-colored');
+
+      // Add light-text class for colors that need dark text
+      if (LIGHT_COLORS.includes(color)) {
+        btn.classList.add('light-text');
+      }
+    }
+
+    btn.addEventListener('click', (e) => {
+      const clickedColor = e.currentTarget.dataset.color;
+      const isActive = state.currentFilters.colors.has(clickedColor);
+      const isNot = state.currentFilters.notColors.has(clickedColor);
+
+      // Cycle: unselected → active → not → unselected
+      if (!isActive && !isNot) {
+        state.currentFilters.colors.add(clickedColor);
+        e.currentTarget.classList.add('active');
+      } else if (isActive) {
+        state.currentFilters.colors.delete(clickedColor);
+        state.currentFilters.notColors.add(clickedColor);
+        e.currentTarget.classList.remove('active');
+        e.currentTarget.classList.add('not');
+      } else if (isNot) {
+        state.currentFilters.notColors.delete(clickedColor);
+        e.currentTarget.classList.remove('not');
       }
 
       filterPokemon();

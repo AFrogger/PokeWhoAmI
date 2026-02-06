@@ -155,6 +155,81 @@ body {
   color: #E74C3C;
 }
 
+/* ===== SETTINGS MODAL ===== */
+.settings-section {
+  margin: 20px 0;
+}
+
+.settings-section h3 {
+  color: #3498DB;
+  margin-bottom: 15px;
+  font-size: 18px;
+  border-bottom: 2px solid #3498DB;
+  padding-bottom: 8px;
+}
+
+.cache-info {
+  background: var(--bg-secondary);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.cache-info p {
+  margin: 8px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cache-info strong {
+  color: var(--text-primary);
+}
+
+.cache-info span {
+  font-weight: 600;
+}
+
+.cache-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #3498DB;
+  color: white;
+}
+
+.action-btn:hover {
+  background: #2980B9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.action-btn.danger {
+  background: #E74C3C;
+}
+
+.action-btn.danger:hover {
+  background: #C0392B;
+}
+
+.cache-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin: 0;
+}
+
 /* ===== HEADER ===== */
 .header {
   background: var(--header-bg);

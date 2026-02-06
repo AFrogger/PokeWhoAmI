@@ -82,6 +82,19 @@
               <line x1="12" y1="8" x2="12.01" y2="8"></line>
             </svg>
           </button>
+          <button id="settings-btn" class="icon-btn" title="Settings">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M12 1v6m0 6v6m5.196-14.196l-4.242 4.242m0 5.908l-4.242 4.242M23 12h-6m-6 0H1m14.196 5.196l-4.242-4.242m0-5.908l-4.242-4.242"></path>
+            </svg>
+          </button>
           <button
             id="dark-mode-toggle"
             class="icon-btn"
@@ -150,6 +163,31 @@
             This project is not authorized, sponsored, or approved by any of the
             companies mentioned above.
           </p>
+        </div>
+      </div>
+
+      <!-- Settings Modal -->
+      <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+          <span class="settings-modal-close modal-close">&times;</span>
+          <h2>Settings</h2>
+
+          <div class="settings-section">
+            <h3>Cache Management</h3>
+            <div class="cache-info">
+              <p><strong>Status:</strong> <span id="cache-status-text">Checking...</span></p>
+              <p><strong>Last Updated:</strong> <span id="cache-last-updated">-</span></p>
+              <p><strong>Cached Pokemon:</strong> <span id="cache-count">0</span></p>
+              <p><strong>Cache Age:</strong> <span id="cache-age">-</span></p>
+            </div>
+            <div class="cache-controls">
+              <button id="refresh-cache-btn" class="action-btn">Refresh Data</button>
+              <button id="clear-cache-btn" class="action-btn danger">Clear Cache</button>
+            </div>
+            <p class="cache-note">
+              Cache expires after 30 days. Pokemon data is automatically refreshed when expired.
+            </p>
+          </div>
         </div>
       </div>
 

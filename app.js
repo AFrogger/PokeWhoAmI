@@ -92,6 +92,232 @@ const LANGUAGE_NAMES = {
   ko: '한국어'
 };
 
+// ===== CACHE CONFIGURATION =====
+const CACHE_CONFIG = {
+  DB_NAME: 'PokeWhoAmICache',
+  DB_VERSION: 1,
+  CACHE_VERSION: '1.0.0',
+  DATA_VERSION: 'gen1-9-v1025',
+  TTL_DAYS: 30  // Cache expires after 30 days
+};
+
+// ===== CACHE MANAGER =====
+const CacheManager = {
+  db: null,
+
+  // Initialize IndexedDB
+  async init() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(CACHE_CONFIG.DB_NAME, CACHE_CONFIG.DB_VERSION);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        this.db = request.result;
+        resolve(this.db);
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+
+        // Create metadata store
+        if (!db.objectStoreNames.contains('metadata')) {
+          db.createObjectStore('metadata', { keyPath: 'key' });
+        }
+
+        // Create generations store
+        if (!db.objectStoreNames.contains('generations')) {
+          db.createObjectStore('generations', { keyPath: 'id' });
+        }
+
+        // Create pokemon data store
+        if (!db.objectStoreNames.contains('pokemonData')) {
+          db.createObjectStore('pokemonData', { keyPath: 'id' });
+        }
+      };
+    });
+  },
+
+  // Get a single item from a store
+  async get(storeName, key) {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([storeName], 'readonly');
+      const store = transaction.objectStore(storeName);
+      const request = store.get(key);
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  // Get all items from a store
+  async getAll(storeName) {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([storeName], 'readonly');
+      const store = transaction.objectStore(storeName);
+      const request = store.getAll();
+
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  // Set a single item in a store
+  async set(storeName, value) {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+
+      // Add timestamp if not present
+      if (!value.cached_at) {
+        value.cached_at = Date.now();
+      }
+
+      const request = store.put(value);
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  // Set multiple items in a store
+  async setAll(storeName, items) {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+
+      const timestamp = Date.now();
+
+      items.forEach(item => {
+        // Add timestamp if not present
+        if (!item.cached_at) {
+          item.cached_at = timestamp;
+        }
+        store.put(item);
+      });
+
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  },
+
+  // Clear all data from the cache
+  async clear() {
+    if (!this.db) await this.init();
+
+    const storeNames = ['metadata', 'generations', 'pokemonData'];
+
+    for (const storeName of storeNames) {
+      await new Promise((resolve, reject) => {
+        const transaction = this.db.transaction([storeName], 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.clear();
+
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    console.log('Cache cleared successfully');
+  },
+
+  // Check if a timestamp is expired
+  isExpired(timestamp, ttlDays) {
+    const now = Date.now();
+    const age = now - timestamp;
+    const maxAge = ttlDays * 24 * 60 * 60 * 1000; // Convert days to milliseconds
+    return age > maxAge;
+  },
+
+  // Get cache metadata
+  async getCacheMetadata() {
+    try {
+      const metadata = await this.get('metadata', 'cache_info');
+      return metadata || null;
+    } catch (error) {
+      console.warn('Error getting cache metadata:', error);
+      return null;
+    }
+  },
+
+  // Update cache metadata
+  async updateCacheMetadata() {
+    const metadata = {
+      key: 'cache_info',
+      cacheVersion: CACHE_CONFIG.CACHE_VERSION,
+      dataVersion: CACHE_CONFIG.DATA_VERSION,
+      lastUpdated: Date.now(),
+      cached_at: Date.now()
+    };
+
+    await this.set('metadata', metadata);
+  },
+
+  // Get cache age in days
+  async getCacheAge() {
+    const metadata = await this.getCacheMetadata();
+    if (!metadata || !metadata.lastUpdated) {
+      return null;
+    }
+
+    const ageMs = Date.now() - metadata.lastUpdated;
+    const ageDays = Math.floor(ageMs / (24 * 60 * 60 * 1000));
+    return ageDays;
+  },
+
+  // Check if cache is valid (exists and not expired)
+  async isCacheValid() {
+    try {
+      const metadata = await this.getCacheMetadata();
+
+      if (!metadata) {
+        return false;
+      }
+
+      // Check version mismatch
+      if (metadata.cacheVersion !== CACHE_CONFIG.CACHE_VERSION ||
+          metadata.dataVersion !== CACHE_CONFIG.DATA_VERSION) {
+        console.log('Cache version mismatch, invalidating cache');
+        await this.clear();
+        return false;
+      }
+
+      // Check if expired
+      if (this.isExpired(metadata.lastUpdated, CACHE_CONFIG.TTL_DAYS)) {
+        console.log('Cache expired');
+        return false;
+      }
+
+      // Check if data actually exists
+      const pokemonCount = await this.getAll('pokemonData');
+      if (pokemonCount.length === 0) {
+        console.log('No cached Pokemon data found');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error checking cache validity:', error);
+      return false;
+    }
+  },
+
+  // Close database connection
+  close() {
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
+  }
+};
+
 // ===== DOM ELEMENTS =====
 const loadingScreen = document.getElementById('loading-screen');
 const appContainer = document.getElementById('app-container');
@@ -109,19 +335,60 @@ const moonIcon = document.getElementById('moon-icon');
 const chosenPokemonDisplay = document.getElementById('chosen-pokemon-display');
 const remainingCounter = document.getElementById('remaining-counter');
 
+// Settings modal elements
+const settingsBtn = document.getElementById('settings-btn');
+const settingsModal = document.getElementById('settings-modal');
+const settingsModalClose = document.querySelector('.settings-modal-close');
+const refreshCacheBtn = document.getElementById('refresh-cache-btn');
+const clearCacheBtn = document.getElementById('clear-cache-btn');
+const cacheStatusText = document.getElementById('cache-status-text');
+const cacheLastUpdated = document.getElementById('cache-last-updated');
+const cacheCount = document.getElementById('cache-count');
+const cacheAge = document.getElementById('cache-age');
+
 // ===== INITIALIZATION =====
 async function init() {
   try {
     showLoading();
+    updateProgress(0, 'Checking cache...');
 
-    // Step 1: Fetch generation mappings
-    await fetchGenerationMappings();
+    // Initialize cache
+    await CacheManager.init();
 
-    // Step 2: Fetch all Pokemon list
-    const pokemonList = await fetchPokemonList();
+    // Check if we can load everything from cache
+    const cacheValid = await CacheManager.isCacheValid();
 
-    // Step 3: Fetch Pokemon details in batches
-    await fetchPokemonDetailsBatch(pokemonList);
+    if (cacheValid) {
+      // Load from cache
+      console.log('Loading all data from cache');
+      updateProgress(5, 'Loading from cache...');
+
+      // Load generations from cache
+      await fetchGenerationMappings();
+
+      // Load all Pokemon from cache
+      const cachedPokemon = await CacheManager.getAll('pokemonData');
+      state.allPokemon = cachedPokemon;
+
+      updateProgress(100, 'Loaded from cache!');
+    } else {
+      // Cache miss or expired - fetch from API
+      console.log('Cache invalid, fetching from API');
+      updateProgress(5, 'Fetching from PokéAPI...');
+
+      // Step 1: Fetch generation mappings
+      await fetchGenerationMappings();
+
+      // Step 2: Fetch all Pokemon list
+      const pokemonList = await fetchPokemonList();
+
+      // Step 3: Fetch Pokemon details in batches
+      await fetchPokemonDetailsBatch(pokemonList);
+
+      // Update cache metadata
+      await CacheManager.updateCacheMetadata();
+      console.log('Data cached for next visit');
+    }
 
     // Step 4: Sort by Pokedex number
     state.allPokemon.sort((a, b) => a.id - b.id);
@@ -148,7 +415,33 @@ async function init() {
 
 // Fetch generation mappings (Gen 1-9)
 async function fetchGenerationMappings() {
+  // Try loading from cache first
+  const cachedGens = await CacheManager.getAll('generations');
+
+  if (cachedGens.length === 9) {
+    // Check if cache is still valid
+    const oldestCache = cachedGens[0];
+    if (oldestCache && !CacheManager.isExpired(oldestCache.cached_at, CACHE_CONFIG.TTL_DAYS)) {
+      console.log('Loading generation data from cache');
+
+      // Restore generation mappings from cache
+      cachedGens.forEach(gen => {
+        gen.pokemon_species.forEach(species => {
+          state.generationMap[species.name] = gen.id;
+        });
+      });
+
+      updateProgress(10, 'Loaded from cache...');
+      return;
+    }
+  }
+
+  // Cache miss or expired - fetch from API
+  console.log('Fetching generation data from API');
+  updateProgress(5, 'Fetching from PokéAPI...');
+
   const generationPromises = [];
+  const generationsToCache = [];
 
   for (let i = 1; i <= 9; i++) {
     generationPromises.push(
@@ -159,6 +452,12 @@ async function fetchGenerationMappings() {
           data.pokemon_species.forEach(species => {
             state.generationMap[species.name] = i;
           });
+
+          // Store for caching
+          generationsToCache.push({
+            id: i,
+            pokemon_species: data.pokemon_species
+          });
         })
         .catch(error => {
           console.warn(`Failed to fetch generation ${i}:`, error);
@@ -167,6 +466,13 @@ async function fetchGenerationMappings() {
   }
 
   await Promise.all(generationPromises);
+
+  // Save to cache
+  if (generationsToCache.length === 9) {
+    await CacheManager.setAll('generations', generationsToCache);
+    console.log('Cached generation data');
+  }
+
   updateProgress(10, 'Loaded generation data...');
 }
 
@@ -205,14 +511,20 @@ async function fetchPokemonDetailsBatch(pokemonList) {
     const batchPromises = batch.map(pokemon => fetchPokemonDetails(pokemon));
 
     const batchResults = await Promise.all(batchPromises);
-    state.allPokemon.push(...batchResults.filter(p => p !== null));
+    const validPokemon = batchResults.filter(p => p !== null);
+    state.allPokemon.push(...validPokemon);
+
+    // Cache this batch
+    if (validPokemon.length > 0) {
+      await CacheManager.setAll('pokemonData', validPokemon);
+    }
 
     // Update progress
-    const progress = 20 + ((i + 1) / batches.length) * 75;
+    const progress = 20 + ((i + 1) / batches.length) * 70;
     updateProgress(progress, `Loading Pokemon ${i * BATCH_SIZE + 1}-${Math.min((i + 1) * BATCH_SIZE, totalPokemon)}...`);
   }
 
-  updateProgress(100, 'Loading complete!');
+  updateProgress(95, 'Caching data for next visit...');
 }
 
 // Fetch individual Pokemon details
@@ -664,6 +976,52 @@ function setupEventListeners() {
     }
   });
 
+  // Settings modal
+  settingsBtn.addEventListener('click', async () => {
+    settingsModal.classList.remove('hidden');
+    await updateCacheInfo();
+  });
+
+  settingsModalClose.addEventListener('click', () => {
+    settingsModal.classList.add('hidden');
+  });
+
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) {
+      settingsModal.classList.add('hidden');
+    }
+  });
+
+  // Refresh cache button
+  refreshCacheBtn.addEventListener('click', async () => {
+    const confirmed = confirm('This will fetch fresh data from PokéAPI. Continue?');
+    if (confirmed) {
+      try {
+        await CacheManager.clear();
+        alert('Cache cleared. Page will reload to fetch fresh data.');
+        location.reload();
+      } catch (error) {
+        console.error('Error refreshing cache:', error);
+        alert('Error refreshing cache. Please try again.');
+      }
+    }
+  });
+
+  // Clear cache button
+  clearCacheBtn.addEventListener('click', async () => {
+    const confirmed = confirm('This will clear all cached Pokemon data. Continue?');
+    if (confirmed) {
+      try {
+        await CacheManager.clear();
+        alert('Cache cleared successfully. Page will reload.');
+        location.reload();
+      } catch (error) {
+        console.error('Error clearing cache:', error);
+        alert('Error clearing cache. Please try again.');
+      }
+    }
+  });
+
   // Language selector dropdown
   const langToggleBtn = document.getElementById('lang-toggle-btn');
   const langDropdown = document.getElementById('lang-dropdown');
@@ -982,6 +1340,48 @@ function showLoading() {
 function hideLoading() {
   loadingScreen.classList.add('hidden');
   appContainer.classList.remove('hidden');
+}
+
+// Update cache info in settings modal
+async function updateCacheInfo() {
+  try {
+    const metadata = await CacheManager.getCacheMetadata();
+    const pokemonData = await CacheManager.getAll('pokemonData');
+
+    if (metadata && metadata.lastUpdated) {
+      const lastUpdated = new Date(metadata.lastUpdated);
+      const ageInDays = await CacheManager.getCacheAge();
+
+      // Update cache status
+      if (ageInDays > CACHE_CONFIG.TTL_DAYS) {
+        cacheStatusText.textContent = 'Expired';
+        cacheStatusText.style.color = '#e74c3c';
+      } else {
+        cacheStatusText.textContent = 'Valid';
+        cacheStatusText.style.color = '#27ae60';
+      }
+
+      // Update last updated date
+      cacheLastUpdated.textContent = lastUpdated.toLocaleString();
+
+      // Update Pokemon count
+      cacheCount.textContent = pokemonData.length;
+
+      // Update cache age
+      cacheAge.textContent = `${ageInDays} day${ageInDays !== 1 ? 's' : ''}`;
+    } else {
+      // No cache
+      cacheStatusText.textContent = 'No cache';
+      cacheStatusText.style.color = '#95a5a6';
+      cacheLastUpdated.textContent = 'Never';
+      cacheCount.textContent = '0';
+      cacheAge.textContent = 'N/A';
+    }
+  } catch (error) {
+    console.error('Error updating cache info:', error);
+    cacheStatusText.textContent = 'Error';
+    cacheStatusText.style.color = '#e74c3c';
+  }
 }
 
 // ===== START APPLICATION =====

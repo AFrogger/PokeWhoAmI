@@ -66,6 +66,7 @@ const modalClose = document.querySelector('.modal-close');
 const sunIcon = document.getElementById('sun-icon');
 const moonIcon = document.getElementById('moon-icon');
 const chosenPokemonDisplay = document.getElementById('chosen-pokemon-display');
+const remainingCounter = document.getElementById('remaining-counter');
 
 // ===== INITIALIZATION =====
 async function init() {
@@ -93,6 +94,7 @@ async function init() {
 
     // Step 7: Initialize chosen Pokemon display
     updateChosenPokemonDisplay();
+    updateRemainingCounter();
 
     hideLoading();
   } catch (error) {
@@ -233,6 +235,8 @@ function renderPokemonGrid() {
     const card = createPokemonCard(pokemon);
     pokemonGrid.appendChild(card);
   });
+
+  updateRemainingCounter();
 }
 
 function createPokemonCard(pokemon) {
@@ -387,6 +391,16 @@ function updateChosenPokemonDisplay() {
       </div>
     `;
   }
+}
+
+function updateRemainingCounter() {
+  // Count Pokemon that are displayed AND not disabled
+  const remainingCount = state.displayedPokemon.filter(pokemon =>
+    !state.disabledPokemon.has(pokemon.id)
+  ).length;
+
+  const counterValue = remainingCounter.querySelector('.counter-value');
+  counterValue.textContent = remainingCount;
 }
 
 function resetAllPokemon() {

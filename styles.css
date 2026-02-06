@@ -699,6 +699,33 @@ body {
   font-weight: 600;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
+
+/* Remaining Pokemon Counter */
+.remaining-counter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 8px 15px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.counter-label {
+  color: var(--header-text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.counter-value {
+  color: var(--header-text);
+  font-weight: 700;
+  font-size: 1.1rem;
+  min-width: 30px;
+  text-align: center;
+}
+
 /* ===== RESPONSIVE DESIGN ===== */
 
 /* Tablets */
@@ -776,6 +803,20 @@ body {
   .chosen-type-badge {
     font-size: 0.6rem;
     padding: 2px 5px;
+  }
+
+  .remaining-counter {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+  }
+
+  .counter-label {
+    font-size: 0.8rem;
+  }
+
+  .counter-value {
+    font-size: 1rem;
+    min-width: 25px;
   }
 
   .main-content {

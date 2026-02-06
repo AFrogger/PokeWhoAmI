@@ -4,6 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pokemon - Who Am I?</title>
+    <meta name="description" content="Play Guess Who with Pokemon! Filter and narrow down 1025 Pokemon by generation, type, evolution stage, color, and special categories. Choose your Pokemon identity in this interactive guessing game." />
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="Pokemon - Who Am I?" />
+    <meta property="og:description" content="Play Guess Who with Pokemon! Filter and narrow down 1025 Pokemon by generation, type, evolution stage, and more." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Pokemon Who Am I" />
+
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#2C3E50" />
+    <meta name="theme-color" content="#0f3460" media="(prefers-color-scheme: dark)" />
+
+    <!-- Resource Hints -->
+    <link rel="preconnect" href="https://pokeapi.co" />
+    <link rel="preconnect" href="https://flagcdn.com" />
+    <link rel="dns-prefetch" href="https://pokeapi.co" />
+    <link rel="dns-prefetch" href="https://flagcdn.com" />
+
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -33,42 +51,45 @@
             <button
               id="lang-toggle-btn"
               class="icon-btn"
+              aria-label="Change language"
               title="Change Language"
             >
               <img
                 id="current-lang-flag"
                 src="https://flagcdn.com/w40/gb.png"
-                alt="English"
+                alt="English (United Kingdom)"
+                width="40"
+                height="30"
               />
             </button>
             <div id="lang-dropdown" class="lang-dropdown hidden">
               <button class="lang-option" data-lang="en" title="English">
-                <img src="https://flagcdn.com/w40/gb.png" alt="English" />
+                <img src="https://flagcdn.com/w40/gb.png" alt="English (United Kingdom)" width="40" height="30" loading="lazy" />
                 <span>English</span>
               </button>
               <button class="lang-option" data-lang="de" title="Deutsch">
-                <img src="https://flagcdn.com/w40/de.png" alt="Deutsch" />
+                <img src="https://flagcdn.com/w40/de.png" alt="Deutsch (Germany)" width="40" height="30" loading="lazy" />
                 <span>Deutsch</span>
               </button>
               <button class="lang-option" data-lang="es" title="Español">
-                <img src="https://flagcdn.com/w40/es.png" alt="Español" />
+                <img src="https://flagcdn.com/w40/es.png" alt="Español (Spain)" width="40" height="30" loading="lazy" />
                 <span>Español</span>
               </button>
               <button class="lang-option" data-lang="fr" title="Français">
-                <img src="https://flagcdn.com/w40/fr.png" alt="Français" />
+                <img src="https://flagcdn.com/w40/fr.png" alt="Français (France)" width="40" height="30" loading="lazy" />
                 <span>Français</span>
               </button>
               <button class="lang-option" data-lang="ja" title="日本語">
-                <img src="https://flagcdn.com/w40/jp.png" alt="日本語" />
+                <img src="https://flagcdn.com/w40/jp.png" alt="日本語 (Japan)" width="40" height="30" loading="lazy" />
                 <span>日本語</span>
               </button>
               <button class="lang-option" data-lang="ko" title="한국어">
-                <img src="https://flagcdn.com/w40/kr.png" alt="한국어" />
+                <img src="https://flagcdn.com/w40/kr.png" alt="한국어 (South Korea)" width="40" height="30" loading="lazy" />
                 <span>한국어</span>
               </button>
             </div>
           </div>
-          <button id="info-btn" class="icon-btn" title="Info">
+          <button id="info-btn" class="icon-btn" aria-label="Information and legal disclaimer" title="Info">
             <svg
               width="24"
               height="24"
@@ -82,7 +103,7 @@
               <line x1="12" y1="8" x2="12.01" y2="8"></line>
             </svg>
           </button>
-          <button id="settings-btn" class="icon-btn" title="Settings">
+          <button id="settings-btn" class="icon-btn" aria-label="Settings and cache management" title="Settings">
             <svg
               width="24"
               height="24"
@@ -98,6 +119,7 @@
           <button
             id="dark-mode-toggle"
             class="icon-btn"
+            aria-label="Toggle dark mode"
             title="Toggle Dark Mode"
           >
             <svg
@@ -197,6 +219,7 @@
         <aside class="sidebar">
           <!-- Name Search -->
           <div class="search-section">
+            <label for="name-search" class="sr-only">Search Pokemon by name</label>
             <input
               type="text"
               id="name-search"

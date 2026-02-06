@@ -649,7 +649,7 @@ function createPokemonCard(pokemon) {
     </button>
     <div class="pokemon-number">#${String(pokemon.id).padStart(3, '0')}</div>
     <div class="pokemon-generation">${ROMAN_NUMERALS[pokemon.generation] || 'I'}</div>
-    <img src="${pokemon.sprite}" alt="${getDisplayName(pokemon)}" class="pokemon-sprite">
+    <img src="${pokemon.sprite}" alt="${getDisplayName(pokemon)}" class="pokemon-sprite" loading="lazy" width="96" height="96">
     <div class="pokemon-name">${getDisplayName(pokemon)}</div>
     <div class="pokemon-types">
       ${pokemon.types.map(type => `<span class="type-badge" style="background-color: ${TYPE_COLORS[type] || '#667eea'}">${type}</span>`).join('')}

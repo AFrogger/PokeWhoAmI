@@ -54,10 +54,10 @@ const TYPE_COLORS = {
 
 // Language support
 const LANGUAGE_FLAGS = {
-  en: '🇬🇧',
-  de: '🇩🇪',
-  es: '🇪🇸',
-  ja: '🇯🇵'
+  en: 'https://flagcdn.com/w40/gb.png',
+  de: 'https://flagcdn.com/w40/de.png',
+  es: 'https://flagcdn.com/w40/es.png',
+  ja: 'https://flagcdn.com/w40/jp.png'
 };
 
 const LANGUAGE_NAMES = {
@@ -553,7 +553,8 @@ function setupEventListeners() {
       state.currentLanguage = selectedLang;
 
       // Update flag display
-      currentLangFlag.textContent = LANGUAGE_FLAGS[selectedLang];
+      currentLangFlag.src = LANGUAGE_FLAGS[selectedLang];
+      currentLangFlag.alt = LANGUAGE_NAMES[selectedLang];
 
       // Save preference to localStorage
       localStorage.setItem('selectedLanguage', selectedLang);
@@ -577,7 +578,8 @@ function setupEventListeners() {
   // Load saved language preference on init
   const savedLanguage = localStorage.getItem('selectedLanguage') || 'en';
   state.currentLanguage = savedLanguage;
-  currentLangFlag.textContent = LANGUAGE_FLAGS[savedLanguage];
+  currentLangFlag.src = LANGUAGE_FLAGS[savedLanguage];
+  currentLangFlag.alt = LANGUAGE_NAMES[savedLanguage];
 
   // Name search input
   nameSearchInput.addEventListener('input', (e) => {

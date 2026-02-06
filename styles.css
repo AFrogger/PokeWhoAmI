@@ -732,7 +732,11 @@ body {
 }
 
 #current-lang-flag {
-  font-size: 1.2rem;
+  width: 28px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 3px;
+  display: block;
 }
 
 .lang-dropdown {
@@ -760,13 +764,20 @@ body {
   border: none;
   border-bottom: 1px solid var(--border-color);
   cursor: pointer;
-  font-size: 0.9rem;
   font-weight: 600;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   gap: 10px;
   text-align: left;
+}
+
+.lang-option img {
+  width: 28px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
 }
 
 .lang-option:last-child {
@@ -780,6 +791,8 @@ body {
 
 .lang-option span {
   flex: 1;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 0.9rem;
 }
 
 /* ===== RESPONSIVE DESIGN ===== */
